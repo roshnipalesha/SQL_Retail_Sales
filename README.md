@@ -116,35 +116,38 @@ WHERE total_sale > 1000
 
 6. **Write a SQL query to find the total number of transactions (transaction_id) made by each gender in each category.**:
 ```sql
-SELECT 
-    category,
-    gender,
-    COUNT(*) as total_trans
-FROM retail_sales
-GROUP 
-    BY 
-    category,
-    gender
-ORDER BY 1
+WITH m AS 
+    (SELECT category,
+            COUNT(*) as male
+    FROM retail_sales
+    WHERE gender='male'
+    GROUP BY category ),
+f AS 
+    (SELECT category, COUNT(*) as female
+     FROM retail_sales
+     WHERE gender='female'
+     GROUP BY category)
+SELECT m.category,
+       male,
+       female
+FROM m JOIN f on m.category=f.category;
 ```
 
 7. **Write a SQL query to calculate the average sale for each month. Find out best selling month in each year**:
 ```sql
-SELECT 
-       year,
+SELECT year,
        month,
-    avg_sale
+      avg_sale
 FROM 
-(    
-SELECT 
-    EXTRACT(YEAR FROM sale_date) as year,
-    EXTRACT(MONTH FROM sale_date) as month,
-    AVG(total_sale) as avg_sale,
-    RANK() OVER(PARTITION BY EXTRACT(YEAR FROM sale_date) ORDER BY AVG(total_sale) DESC) as rank
-FROM retail_sales
-GROUP BY 1, 2
-) as t1
-WHERE rank = 1
+	( SELECT * FROM (
+    		SELECT year(sale_date) as year, 
+    			   month (sale_date) as month,
+    			   avg(total_sale) as avg_sale,
+    			   rank() over (partition by year(sale_date) order by avg(total_sale) desc) as rankof
+    		FROM retail_sales
+    		GROUP BY 1,2) AS t1
+	WHERE rankof=1 ) AS t2
+ORDER BY 1;
 ```
 
 8. **Write a SQL query to find the top 5 customers based on the highest total sales **:
@@ -158,7 +161,7 @@ ORDER BY 2 DESC
 LIMIT 5
 ```
 
-9. **Write a SQL query to find the number of unique customers who purchased items from each category.**:
+9. **Write a SQL query to find the number of unique customers who purchased items for each category.**:
 ```sql
 SELECT 
     category,    
@@ -169,22 +172,36 @@ GROUP BY category
 
 10. **Write a SQL query to create each shift and number of orders (Example Morning <12, Afternoon Between 12 & 17, Evening >17)**:
 ```sql
-WITH hourly_sale
-AS
-(
-SELECT *,
-    CASE
-        WHEN EXTRACT(HOUR FROM sale_time) < 12 THEN 'Morning'
-        WHEN EXTRACT(HOUR FROM sale_time) BETWEEN 12 AND 17 THEN 'Afternoon'
-        ELSE 'Evening'
-    END as shift
+SELECT COUNT(*) AS total_orders,
+	 CASE WHEN HOUR(sale_time) <= 12 THEN 'Morning'
+          WHEN HOUR(sale_time) between 12 and 17 THEN 'Afternoon'
+          WHEN HOUR(sale_time) > 17 THEN 'Evening'
+          end as shift
 FROM retail_sales
-)
-SELECT 
-    shift,
-    COUNT(*) as total_orders    
-FROM hourly_sale
-GROUP BY shift
+GROUP BY 2;
+```
+
+11. **Write a SQL Query to calculate the total sales for each month and find the month with the highest total sales in each year**:
+```sql
+WITH monthly_sales AS 
+    (SELECT YEAR(sale_date) as syear,
+            MONTH(sale_date) as smonth,
+            SUM(total_sale) as total_sales
+     FROM retail_sales
+    GROUP BY YEAR(sale_date), MONTH(sale_date)
+    ORDER BY YEAR(sale_date), MONTH(sale_date) ASC)
+SELECT syear,
+       smonth,
+       total_sales
+FROM
+    (SELECT syear,
+            smonth,
+            total_sales,
+            MAX(total_sales) OVER (partition by syear) as max_sales
+    FROM monthly_sales)
+    AS rankedsales
+WHERE total_sales=max_sales
+ORDER BY syear,smonth;
 ```
 
 ## Findings
@@ -211,17 +228,14 @@ This project serves as a comprehensive introduction to SQL for data analysts, co
 3. **Run the Queries**: Use the SQL queries provided in the `analysis_queries.sql` file to perform your analysis.
 4. **Explore and Modify**: Feel free to modify the queries to explore different aspects of the dataset or answer additional business questions.
 
-## Author - Zero Analyst
+## Author - Roshni Palesa
 
-This project is part of my portfolio, showcasing the SQL skills essential for data analyst roles. If you have any questions, feedback, or would like to collaborate, feel free to get in touch!
+This project serves as a demonstration of SQL skills essential for data analyst, covering database management, data manipulation and Exploratory Data Analysis(EDA) to derive business insights from sales data,
+customer behaviour and product performance.
 
-### Stay Updated and Join the Community
+### Stay Connected
 
-For more content on SQL, data analysis, and other data-related topics, make sure to follow me on social media and join our community:
-
-- **YouTube**: [Subscribe to my channel for tutorials and insights](https://www.youtube.com/@zero_analyst)
-- **Instagram**: [Follow me for daily tips and updates](https://www.instagram.com/zero_analyst/)
-- **LinkedIn**: [Connect with me professionally](https://www.linkedin.com/in/najirr)
-- **Discord**: [Join our community to learn and grow together](https://discord.gg/36h5f2Z5PK)
+- **Email**: [rpalesha070@gmail.com]
+- **LinkedIn**: [Connect with me professionally](www.linkedin.com/in/roshni-palesha-dataanalyst7)
 
 Thank you for your support, and I look forward to connecting with you!
